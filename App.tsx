@@ -1,37 +1,73 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useState } from 'react';
+import { StatusBar, StyleSheet, View } from 'react-native';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import LoginScreen from './src/screens/LoginScreen';
+import ProductScreen from './src/screens/ProductScreen';
+import { login } from './src/api/client';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+export default function App() {
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
+  const [loginLoading, setLoginLoading] = useState(false);
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  async function handleLogin(
+    username: string,
+    password: string,
+  ): Promise<void> {
+    setLoginError(null);
+
+    if (!username.trim() || !password) {
+      setLoginError('Please enter your username and password.');
+      return;
+    }
+
+    setLoginLoading(true);
+
+    try {
+      const session = await login(username.trim(), password);
+
+      if (!session.accessToken) {
+        throw new Error('Authentication response did not contain a token.');
+      }
+
+      setAccessToken(session.accessToken);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown login error';
+
+      if (/API request failed: (400|401)\b/.test(message)) {
+        setLoginError('Invalid username or password. Please try again.');
+      } else if (message.includes('Network request failed')) {
+        setLoginError('Network error. Check your internet connection.');
+      } else {
+        setLoginError(message);
+      }
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  function handleLogout() {
+    setAccessToken(null);
+    setLoginError(null);
+  }
 
   return (
     <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
+      <StatusBar barStyle="dark-content" />
+
+      {accessToken ? (
+        <ProductScreen accessToken={accessToken} onLogout={handleLogout} />
+      ) : (
+        <LoginScreen
+          onLogin={handleLogin}
+          loading={loginLoading}
+          error={loginError}
+          onClearError={() => setLoginError(null)}
+        />
+      )}
     </View>
   );
 }
@@ -39,7 +75,6 @@ function AppContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
 });
-
-export default App;
