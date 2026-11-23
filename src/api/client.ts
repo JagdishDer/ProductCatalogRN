@@ -3,6 +3,22 @@ import type {Product, LoginResponse} from '../types/Product';
 
 const BASE_URL = 'https://dummyjson.com';
 
+type AuthUser = {
+  id: number;
+  username: string;
+};
+
+export async function getCurrentUser(
+  token: string,
+): Promise<AuthUser> {
+  return request<AuthUser>('/auth/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
